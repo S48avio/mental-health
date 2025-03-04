@@ -3,46 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serenity - AI Chatbot</title>
+    <title>Serenity - AI Chat</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script>
-        function sendMessage() {
-            let userInput = document.getElementById("user-input");
-            let message = userInput.value.trim();
-            if (message === "") return;
+        document.addEventListener("DOMContentLoaded", function () {
+            const quotes = [
+                { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+                { text: "Your limitation—it's only your imagination.", author: ""  },
+                { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+                { text: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
+                { text: "Dream big, work hard, stay focused.", author: ""  },
+                { text: "The mind is everything. What you think you become.", author: "Buddha" },
+                { text: "You must be the change you wish to see in the world.", author: "Mahatma Gandhi" },
+                { text: "Believe in yourself, and you're halfway there.", author: "Theodore Roosevelt" },
+                { text: "Happiness is not something ready-made. It comes from your own actions.", author: "Dalai Lama" },
+                { text: "If you want to lift yourself up, lift up someone else.", author: "Booker T. Washington" }
+            ];
 
-            let chatbox = document.getElementById("chatbox");
-            let userMessage = `<div class="message user-message">${message}</div>`;
-            chatbox.innerHTML += userMessage;
+            let quoteIndex = 0;
+            let quoteElement = document.getElementById("quote");
+            let authorElement = document.getElementById("author");
+            let quoteInterval;
 
-            userInput.value = ""; // Clear input
-            chatbox.scrollTop = chatbox.scrollHeight; // Auto-scroll
+            function updateQuote() {
+                quoteElement.innerText = `“${quotes[quoteIndex].text}”`;
+                authorElement.innerText = ` ${quotes[quoteIndex].author}`;
+                quoteIndex = (quoteIndex + 1) % quotes.length;
+            }
 
-            // Send request to Flask backend
-            fetch("/get_response", {
-                method: "POST",
-                body: JSON.stringify({ message: message }),
-                headers: { "Content-Type": "application/json" }
-            })
-            .then(response => response.json())
-            .then(data => {
-                let botMessage = `<div class="message bot-message">${data.response}</div>`;
-                chatbox.innerHTML += botMessage;
+            updateQuote();
+            quoteInterval = setInterval(updateQuote, 5000);
+
+            function hideQuotes() {
+                clearInterval(quoteInterval);
+                document.getElementById("quote-container").style.display = "none";
+            }
+
+            function sendMessage() {
+                let userInput = document.getElementById("user-input");
+                let message = userInput.value.trim();
+                if (message === "") return;
+
+                let chatbox = document.getElementById("chatbox");
+
+                // Hide quote when user sends first message
+                if (document.getElementById("quote-container").style.display !== "none") {
+                    hideQuotes();
+                }
+
+                let userMessage = `
+                    <div class="message user-message">
+                        <img src="{{ url_for('static', filename='user.webp') }}" class="avatar">
+                        <span>${message}</span>
+                    </div>`;
+                chatbox.innerHTML += userMessage;
+                userInput.value = "";
                 chatbox.scrollTop = chatbox.scrollHeight;
+
+                // Typing effect
+                let typingIndicator = `
+                    <div id="typing-indicator" class="message bot-message">
+                        <img src="{{ url_for('static', filename='ai.webp') }}" class="avatar">
+                        <span>Serenity is typing...</span>
+                    </div>`;
+                chatbox.innerHTML += typingIndicator;
+                chatbox.scrollTop = chatbox.scrollHeight;
+
+                // Fetch AI response
+                fetch("/get_response", {
+                    method: "POST",
+                    body: JSON.stringify({ message: message }),
+                    headers: { "Content-Type": "application/json" }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("typing-indicator").remove();
+                    let botMessage = `
+                        <div class="message bot-message">
+                            <img src="{{ url_for('static', filename='ai.webp') }}" class="avatar">
+                            <span>${data.response}</span>
+                        </div>`;
+                    chatbox.innerHTML += botMessage;
+                    chatbox.scrollTop = chatbox.scrollHeight;
+                });
+            }
+
+            document.getElementById("user-input").addEventListener("keypress", function (event) {
+                if (event.key === "Enter") {
+                    sendMessage();
+                }
             });
-        }
+
+            document.querySelector("button").addEventListener("click", sendMessage);
+        });
     </script>
 </head>
 <body>
-    <div class="chat-container">
-        <h2>Serenity - AI Chatbot</h2>
-        <div id="chatbox" class="chatbox">
-            <div class="message bot-message">Hello! How can I help you today?</div>
-        </div>
-        <div class="input-container">
-            <input type="text" id="user-input" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendMessage()">
-            <button onclick="sendMessage()">➤</button>
-        </div>
+    <h1 class="serenity-title">Serenity</h1>
+
+    <div id="quote-container">
+        <p id="quote" class="quote-text"></p>
+        <p id="author" class="quote-author"></p>
+    </div>
+
+    <!-- Chat Messages -->
+    <div id="chatbox" class="chatbox"></div>
+
+    <!-- Input Field at Bottom -->
+    <div class="input-container">
+        <input type="text" id="user-input" placeholder="Ask anything...">
+        <button>➤</button>
     </div>
 </body>
 </html>
